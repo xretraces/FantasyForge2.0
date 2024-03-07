@@ -484,6 +484,13 @@ public class Main {
             for (PlayerName player : bestCombination) {
                 System.out.println(player.getPlayerName());
             }
+
+            // Calculate combined odds for the best combination
+            double[] playerOdds = bestCombination.stream().mapToDouble(PlayerName::getPlayerOdds).toArray();
+            double combinationOdds = OddsConverter.calculateParlayOdds(playerOdds);
+
+            // Print combination odds for the best combination
+            System.out.println("Combination Odds: " + combinationOdds);
             System.out.println(); // Add a blank line for separation
 
             // Generate and print summary for the best combination
@@ -491,6 +498,20 @@ public class Main {
             System.out.println(combinationSummary);
             System.out.println(); // Add a blank line for separation
         }
+
+        // Assuming you have already collected player information into a PlayerName array called 'players'
+        double[] playerOdds = new double[players.length];
+
+        // Retrieve player odds and calculate parlay odds
+        for (int i = 0; i < players.length; i++) {
+            playerOdds[i] = players[i].getPlayerOdds();
+        }
+
+        // Calculate parlay odds
+        double parlayOdds = OddsConverter.calculateParlayOdds(playerOdds);
+
+        // Print the parlay odds
+        System.out.println("Parlay Odds: " + parlayOdds);
     }
 
     private static double calculatePayout(int i, int correctPicks, double totalBetAmount) {
