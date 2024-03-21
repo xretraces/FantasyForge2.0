@@ -52,11 +52,13 @@ public class RankingScoreCalculator {
         }
 
 
+
+
         // Retrieve matchup information from the player object
         String matchup = player.getMatchup();
 
         // Use matchup information to adjust ranking score calculation
-        double matchupAdjustment = calculateMatchupAdjustment(matchup);
+        double matchupAdjustment = calculateMatchupAdjustment(matchup, player.getPropLine());
 
         double estimatedValueAdjustment = calculateEstimatedValueAdjustment(player);
 
@@ -119,12 +121,17 @@ public class RankingScoreCalculator {
         return deduction;
     }
 
-    public static double calculateMatchupAdjustment(String matchup) {
-        return switch (matchup.toLowerCase()) {
-            case "good" -> 5;
-            case "average" -> 0;
-            default -> -5;
-        };
+    public static double calculateMatchupAdjustment(String matchup, String propLine) {
+        if (propLine.toLowerCase().contains("less") && matchup.equalsIgnoreCase("good")) {
+            return -5; // If prop line contains "Less" and matchup is good, adjust score negatively
+        } else {
+            // Otherwise, apply default adjustments
+            return switch (matchup.toLowerCase()) {
+                case "good" -> 5;
+                case "average" -> 0;
+                default -> -5;
+            };
+        }
     }
 
     public static String generatePlayerSummary(PlayerName player) {

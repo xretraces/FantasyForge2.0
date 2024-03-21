@@ -11,5 +11,5 @@ public class Odds {
     public int getMoneyLine() {
         return moneyLine;
     }
-    }
+}
 

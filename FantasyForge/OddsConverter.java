@@ -2,11 +2,6 @@ package FantasyForge;
 
 public class OddsConverter {
 
-    // Conversion methods
-    public static double decimalToAmerican(double decimalOdds) {
-        return decimalOdds >= 2.0 ? (decimalOdds - 1.0) * 100.0 : -100.0 / (decimalOdds - 1.0);
-    }
-
     public static double americanToDecimal(double americanOdds) {
         return americanOdds >= 0.0 ? (americanOdds / 100.0) + 1.0 : (100.0 / -americanOdds) + 1.0;
     }
@@ -33,4 +28,5 @@ public class OddsConverter {
         // Calculate the total parlay odds by subtracting 1 from the multiplier
         return multiplier - 1.0;
     }
+
 }

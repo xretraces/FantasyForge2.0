@@ -2,6 +2,9 @@ package FantasyForge;
 
 import java.util.Scanner;
 
+import static FantasyForge.Main.calculateHitRatePercentage;
+import static FantasyForge.Main.findClosestMoneyLine;
+
 public class PlayerName extends ProjectedPick {
     private String consideredStar;
     private int scaleFactor;
@@ -14,6 +17,9 @@ public class PlayerName extends ProjectedPick {
     private String matchup;
     private String insights; // new field to store player insights
     private String hitRate; // new field for hit rate
+    private int closestMoneyLine;
+    private double impliedProbability;
+    private double hitRatePercentage;
 
 
     public PlayerName(String playerName, String propLine, int playerOdds, String consideredStar, int scaleFactor, boolean hasEstimatedValue, double estimatedValue, String hitRate) {
@@ -80,6 +86,37 @@ public class PlayerName extends ProjectedPick {
         this.rankingScore = rankingScore;
     }
 
+    // New methods for odds calculation
+    public int getClosestMoneyLine() {
+        return closestMoneyLine;
+    }
+
+    public void setClosestMoneyLine(int closestMoneyLine) {
+        this.closestMoneyLine = closestMoneyLine;
+    }
+
+    public double getImpliedProbability() {
+        return impliedProbability;
+    }
+
+    public void setImpliedProbability(double impliedProbability) {
+        this.impliedProbability = impliedProbability;
+    }
+
+    public double getHitRatePercentage() {
+        return hitRatePercentage;
+    }
+
+    public void setHitRatePercentage(double hitRatePercentage) {
+        this.hitRatePercentage = hitRatePercentage;
+    }
+
+    public void calculateOdds(Odds[] oddsArray) {
+        this.closestMoneyLine = findClosestMoneyLine(this.playerOdds, oddsArray);
+        this.impliedProbability = OddsConverter.impliedProbability(this.closestMoneyLine);
+        this.hitRatePercentage = calculateHitRatePercentage(this.impliedProbability);
+    }
+
     public void enterInsights() {
         Scanner input = new Scanner(System.in);
         System.out.println("Enter insights for " + name + ":");
@@ -134,6 +171,8 @@ public class PlayerName extends ProjectedPick {
 
         return propLine;
     }
+
+
 
     public void execute() {
         Scanner input = new Scanner(System.in);
