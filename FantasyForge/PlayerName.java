@@ -20,6 +20,8 @@ public class PlayerName extends ProjectedPick {
     private int closestMoneyLine;
     private double impliedProbability;
     private double hitRatePercentage;
+    private Double projectedLine; // field to store projected line
+    private int rank;
 
 
     public PlayerName(String playerName, String propLine, int playerOdds, String consideredStar, int scaleFactor, boolean hasEstimatedValue, double estimatedValue, String hitRate) {
@@ -32,6 +34,7 @@ public class PlayerName extends ProjectedPick {
         this.hasEstimatedValue = hasEstimatedValue;
         this.estimatedValue = estimatedValue;
         this.hitRate = hitRate;
+        this.projectedLine = null; // Initialize projectedLine as null
     }
 
 
@@ -82,8 +85,26 @@ public class PlayerName extends ProjectedPick {
         this.matchup = matchup;
     }
 
+    public Double getProjectedLine() {
+        return projectedLine;
+    }
+
+    public void setProjectedLine(Double projectedLine) {
+        this.projectedLine = projectedLine;
+    }
+
     public void setRankingScore(double rankingScore) {
         this.rankingScore = rankingScore;
+    }
+
+    // Add a method to set the rank
+    public void setRank(int rank) {
+        this.rank = rank;
+    }
+
+    // Add a method to get the rank
+    public int getRank() {
+        return rank;
     }
 
     // New methods for odds calculation
@@ -173,7 +194,6 @@ public class PlayerName extends ProjectedPick {
     }
 
 
-
     public void execute() {
         Scanner input = new Scanner(System.in);
 
@@ -209,6 +229,19 @@ public class PlayerName extends ProjectedPick {
         } else {
             hasEstimatedValue = false;
             estimatedValue = 0;
+        }
+
+        System.out.println("Enter the projected points for the player (leave blank if not available):");
+        String projectedLineInput = input.nextLine().trim();
+        if (!projectedLineInput.isEmpty()) {
+            try {
+                this.projectedLine = Double.parseDouble(projectedLineInput);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input for projected points, setting to null as not available.");
+                this.projectedLine = null; // Explicitly set to null if input is invalid
+            }
+        } else {
+            this.projectedLine = null; // Set to null if no input is provided
         }
 
         System.out.println("Enter the projected matchup for the player (Good/Average/Bad):");

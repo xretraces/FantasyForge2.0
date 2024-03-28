@@ -3,9 +3,8 @@ package FantasyForge;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.Objects;
 
 public class FantasyForgeApplication {
     private JFrame frame;
@@ -51,6 +50,20 @@ public class FantasyForgeApplication {
         JButton generateOptimizedCombinationButton = new JButton("Generate Optimized Combination");
         JSpinner groupSizeSpinner = new JSpinner(new SpinnerNumberModel(2, 2, 10, 1));
         JButton tutorialButton = new JButton("Tutorial"); // Tutorial button
+        JButton showStatsButton = new JButton("Show Player Stats");
+        showStatsButton.addActionListener(e -> displayPlayerStats());
+        // Button to display player ranking scores
+        JButton displayRankingsButton = new JButton("Display Player Ranking Scores");
+        displayRankingsButton.addActionListener(e -> {
+            if (players.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "No players have been added.", "Error", JOptionPane.ERROR_MESSAGE);
+            } else {
+                displayPlayerRankingScores();
+            }
+        });
+        JButton showBestCombinationButton = new JButton("Show Best Combination");
+        showBestCombinationButton.addActionListener(e -> showBestCombination());
+
 
         addPlayerButton.addActionListener(e -> openAddPlayerDialog());
         generateOptimizedCombinationButton.addActionListener(e -> {
@@ -64,6 +77,10 @@ public class FantasyForgeApplication {
         controlPanel.add(groupSizeSpinner);
         controlPanel.add(generateOptimizedCombinationButton);
         controlPanel.add(tutorialButton); // Add the tutorial button to the control panel
+        controlPanel.add(showStatsButton); // Add the "Show Player Stats" button to the panel
+        controlPanel.add(displayRankingsButton);
+        controlPanel.add(showBestCombinationButton); // Add the button to the control panel
+
 
         frame.getContentPane().add(controlPanel, BorderLayout.SOUTH);
     }
@@ -93,6 +110,8 @@ public class FantasyForgeApplication {
         JCheckBox hasEstimatedValueCheck = new JCheckBox();
         JTextField estimatedValueField = new JTextField();
         JTextField hitRateField = new JTextField();
+        JTextField projectedLineField = new JTextField(); // Field for entering projected line
+        JTextField insightsField = new JTextField();
         JComboBox<String> matchupCombo = new JComboBox<>(new String[]{"good", "average", "bad"});
         matchupCombo.setSelectedIndex(1); // Default to "average"
 
@@ -105,7 +124,9 @@ public class FantasyForgeApplication {
                 new JLabel("Has Estimated Value"), hasEstimatedValueCheck,
                 new JLabel("Estimated Value"), estimatedValueField,
                 new JLabel("Hit Rate"), hitRateField,
-                new JLabel("Matchup"), matchupCombo
+                new JLabel("Projected Line (optional)"), projectedLineField, // Add projected line label and field
+                new JLabel("Matchup"), matchupCombo,
+                new JLabel("Player Insights"), insightsField,
         };
 
         int result = JOptionPane.showConfirmDialog(null, inputs, "Add Player", JOptionPane.DEFAULT_OPTION);
@@ -120,20 +141,25 @@ public class FantasyForgeApplication {
                 double estimatedValue = hasEstimatedValue ? Double.parseDouble(estimatedValueField.getText()) : 0;
                 String hitRate = hitRateField.getText();
                 String matchup = (String) matchupCombo.getSelectedItem();
-
+                Double projectedLine = projectedLineField.getText().isEmpty() ? null : Double.parseDouble(projectedLineField.getText()); // Parse projected line, allowing for null
+                String insights = insightsField.getText();
+                double insightsDeduction = calculateInsightsDeduction(insights);
                 PlayerName player = new PlayerName(playerName, propLine, playerOdds, consideredStar, scaleFactor, hasEstimatedValue, estimatedValue, hitRate);
                 player.setMatchup(matchup);
+                player.setProjectedLine(projectedLine); // Set the projected line
+
                 // Calculate ranking score and then update the table
-                double rankingScore = RankingScoreCalculator.calculateRankingScore(player);
+                double rankingScore = RankingScoreCalculator.calculateRankingScore(player) + insightsDeduction;
                 player.setRankingScore(rankingScore);
 
                 // Add player to the list and update the table
                 addPlayerAndUpdateTable(player);
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(frame, "Please enter valid numeric values for odds and estimated value.", "Input Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(frame, "Please enter valid numeric values for odds, estimated value, and projected line.", "Input Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
+
 
     private void addPlayerAndUpdateTable(PlayerName player) {
         players.add(player);
@@ -150,36 +176,212 @@ public class FantasyForgeApplication {
             JOptionPane.showMessageDialog(frame, "No players have been added.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        List<List<PlayerName>> combinations = FantasyTeamOptimizer.generateCombinations(new ArrayList<>(players), groupSize);
-        if (combinations.isEmpty()) {
-            JOptionPane.showMessageDialog(frame, "No combinations found.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        List<PlayerName> bestCombination = FantasyTeamOptimizer.selectBestCombination(combinations);
 
-        // Perform odds calculations for each player in the best combination
-        // Initialize this array with your actual odds data
-        for (PlayerName player : bestCombination) {
-            player.calculateOdds(oddsArray);
+        // Sort the players based on their ranking scores in descending order
+        players.sort(Comparator.comparingDouble(PlayerName::getRankingScore).reversed());
+
+        // Assign ranks to the sorted players based on their order
+        for (int i = 0; i < players.size(); i++) {
+            players.get(i).setRank(i + 1);
         }
 
-        // Now that each player has updated odds, implied probability, and hit rate percentage,
-        // you can incorporate this information into your summary
+        // Display the players along with their assigned ranks
         StringBuilder summaryBuilder = new StringBuilder();
-        summaryBuilder.append(FantasyTeamOptimizer.generateCombinationSummary(bestCombination));
-        summaryBuilder.append("\n\nOdds and Probabilities:\n");
-        for (PlayerName player : bestCombination) {
-            summaryBuilder.append(player.getPlayerName())
-                    .append(": Closest Money Line = ").append(player.getClosestMoneyLine())
-                    .append(", Implied Probability = ").append(String.format("%.2f", player.getImpliedProbability()))
-                    .append("%, Hit Rate = ").append(String.format("%.2f", player.getHitRatePercentage()))
-                    .append("%\n");
+        summaryBuilder.append(String.format("%-4s | %-15s | %-28s | %-5s | %-4s | %-13s | %-15s | %-11s | %-15s\n",
+                "Rank", "Player Name", "Prop Line", "Odds", "Star", "Scale Factor", "Estimated Value", "Hit Rate (%)", "Ranking Score"));
+        summaryBuilder.append("-".repeat(129)).append("\n"); // Adjust based on actual column widths
+
+        for (PlayerName player : players) {
+            summaryBuilder.append(String.format("%-4d | %-15s | %-28s | %-5d | %-4s | %-13d | %-15s | %-11s | %.2f\n",
+                    player.getRank(), player.getPlayerName(), player.getPropLine(),
+                    player.getPlayerOdds(), player.getConsideredStar(), player.getScaleFactor(),
+                    player.hasEstimatedValue() ? "Yes" : "No", player.getHitRate(), player.getRankingScore()));
         }
 
+        // Generate and display possible combinations
+        summaryBuilder.append("\nPossible Combinations:\n");
+        for (int i = 2; i <= Math.min(6, players.size()); i++) {
+            summaryBuilder.append("\n").append(i).append("-Man Power Play:\n");
+            List<List<PlayerName>> combinations = FantasyTeamOptimizer.generateCombinations(new ArrayList<>(players), i);
+            for (List<PlayerName> combination : combinations) {
+                Set<PlayerName> combinationSet = new HashSet<>(combination);
+                if (combinationSet.size() != i) {
+                    continue;
+                }
+                double combinedRankingScore = 0.0;
+                summaryBuilder.append("Combination:\n");
+                for (PlayerName player : combination) {
+                    summaryBuilder.append("- ").append(player.getPlayerName()).append(": ").append(player.getRankingScore()).append("\n");
+                    combinedRankingScore += player.getRankingScore();
+                }
+                summaryBuilder.append("Total Score: ").append(combinedRankingScore).append("\n\n");
+            }
+        }
+
+        // Display the result in a dialog
         JTextArea textArea = new JTextArea(summaryBuilder.toString());
         textArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(textArea);
         JOptionPane.showMessageDialog(frame, scrollPane, "Optimized Combination Summary", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+
+
+
+    private void showBestCombination() {
+        if (players.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "No players have been added.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Calculate the best combination based on ranking score
+        List<PlayerName> bestCombination = calculateBestCombinationByRankingScore();
+
+        // Display the best combination along with its detailed stats
+        if (bestCombination != null) {
+            String summaryBuilder = "Best Combination:\n" +
+                    FantasyTeamOptimizer.generateCombinationSummary(bestCombination);
+
+            // Add detailed stats for each player in the best combination
+            for (PlayerName player : bestCombination) {
+                // Calculate closest moneyline
+                int closestMoneyLine = findClosestMoneyLine(player.getPlayerOdds(), oddsArray);
+                // Calculate implied probability
+                double impliedProbability = OddsConverter.impliedProbability(closestMoneyLine);
+                // Calculate hit rate percentage
+                double hitRatePercentage = player.getHitRatePercentage(); // Assuming this method exists in the PlayerName class
+
+                // Print player stats
+                System.out.println("Player: " + player.getPlayerName());
+                System.out.println("Closest Moneyline: " + closestMoneyLine);
+                System.out.println("Implied Probability: " + String.format("%.2f", impliedProbability) + "%");
+                System.out.println("Hit Rate Percentage: " + String.format("%.2f", hitRatePercentage) + "%\n");
+            }
+
+
+            JTextArea textArea = new JTextArea(summaryBuilder);
+            textArea.setEditable(false);
+            JScrollPane scrollPane = new JScrollPane(textArea);
+            JOptionPane.showMessageDialog(frame, scrollPane, "Best Combination by Ranking Score", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(frame, "No best combination found.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private List<PlayerName> calculateBestCombinationByRankingScore() {
+        // Ensure there are players available
+        if (players.isEmpty()) {
+            return null; // Return null if no players are available
+        }
+
+        // Sort players based on their ranking scores in descending order
+        players.sort(Comparator.comparingDouble(PlayerName::getRankingScore).reversed());
+
+        // Assuming you want to consider the top few players for the best combination
+        int numTopPlayers = Math.min(players.size(), 5); // You can adjust this number as needed
+
+        // Create a sublist containing the top players based on ranking score
+        List<PlayerName> topPlayers = players.subList(0, numTopPlayers);
+
+        // Now, you have the top players sorted by ranking score
+        // You can use these players to form the best combination(s) as required
+
+        // For example, you might want to return the top player as the best combination
+        List<PlayerName> bestCombination = new ArrayList<>();
+        bestCombination.add(topPlayers.get(0)); // Add the top player to the best combination
+
+        return bestCombination; // Return the best combination(s) found
+    }
+
+    public static double calculateInsightsDeduction(String insights) {
+        double deduction = 0.0;
+
+        // Check if player exceeded or failed to exceed
+        if (insights.contains("Exceeded")) {
+            deduction += 0.3;
+        } else if (insights.contains("Failed to exceed")) {
+            deduction -= 0.3;
+        }
+
+        // Check consecutive games
+        if (insights.contains("in 5 straight games") || insights.contains("in 5 of his last 5 games")) {
+            deduction += 0.3;
+        } else if (insights.contains("in 4 straight games") || insights.contains("in 4 of his last 5 games")) {
+            deduction += 0.2;
+        } else if (insights.contains("in 3 straight games") || insights.contains("in 3 of his last 5 games")) {
+            deduction += 0.1;
+        } else if (insights.contains("in 2 straight games") || insights.contains("in 2 of his last 5 games")) {
+            deduction -= 0.1;
+        } else if (insights.contains("in 1 straight games") || insights.contains("in 1 of his last 5 games")) {
+            deduction -= 0.2;
+        } else if (insights.contains("in 0 straight games") || insights.contains("in 0 of his last 5 games")) {
+            deduction -= 0.3;
+        }
+
+        return deduction;
+    }
+
+
+    private void displayPlayerStats() {
+        StringBuilder statsBuilder = new StringBuilder();
+        statsBuilder.append("Player Stats:\n");
+        statsBuilder.append("-----------------------------------------------------------------------------------\n");
+        statsBuilder.append(String.format("| %-15s | %-20s | %-19s | %-12s | %-13s |\n", "Player Name", "Closest Money Line", "Implied Probability", "Hit Rate (%)", "Ranking Score"));
+        statsBuilder.append("-----------------------------------------------------------------------------------\n");
+
+        for (PlayerName player : players) {
+            int closestMoneyLine = findClosestMoneyLine(player.getPlayerOdds(), oddsArray);
+            double impliedProbability = OddsConverter.impliedProbability(closestMoneyLine);
+            double hitRatePercentage = OddsConverter.hitRatePercentage(Math.abs(impliedProbability)); // Ensuring positivity as shown in your snippet
+
+            statsBuilder.append(String.format("| %-15s | %-20d | %-19.2f | %-12.2f | %-13.2f |\n",
+                    player.getPlayerName(),
+                    closestMoneyLine,
+                    Math.abs(impliedProbability), // Ensured positive
+                    hitRatePercentage,
+                    player.getRankingScore()));
+        }
+
+        statsBuilder.append("-----------------------------------------------------------------------------------\n");
+
+        JTextArea textArea = new JTextArea(statsBuilder.toString());
+        textArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        JOptionPane.showMessageDialog(frame, scrollPane, "Player Statistics", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+
+    private void displayPlayerRankingScores() {
+        StringBuilder rankingsBuilder = new StringBuilder();
+        rankingsBuilder.append("Player Ranking Scores:\n");
+        rankingsBuilder.append(String.format("%-2s%-15s%-3s%s\n", "Rank", "Player Name", "-", "Ranking Score"));
+        rankingsBuilder.append("-".repeat(35)).append("\n");
+
+        for (int i = 0; i < players.size(); i++) {
+            rankingsBuilder.append(String.format("%-2d%-15s%-3s%.2f\n", (i + 1), players.get(i).getPlayerName(), "-", players.get(i).getRankingScore()));
+        }
+
+        JTextArea textArea = new JTextArea(rankingsBuilder.toString());
+        textArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        JOptionPane.showMessageDialog(frame, scrollPane, "Player Ranking Scores", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+
+    // This method finds the closest money line value in the oddsArray for a given player's odds
+    private int findClosestMoneyLine(int playerOdds, Odds[] oddsArray) {
+        int closest = oddsArray[0].getMoneyLine();
+        int smallestDifference = Math.abs(playerOdds - closest);
+
+        for (Odds odds : oddsArray) {
+            int currentDifference = Math.abs(playerOdds - odds.getMoneyLine());
+            if (currentDifference < smallestDifference) {
+                closest = odds.getMoneyLine();
+                smallestDifference = currentDifference;
+            }
+        }
+
+        return closest;
     }
 
 

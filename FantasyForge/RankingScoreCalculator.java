@@ -64,9 +64,12 @@ public class RankingScoreCalculator {
 
         double hitRateAdjustment = calculateHitRateAdjustment(player.getHitRate());
 
+        // Calculate the projected line adjustment
+        double projectedLineAdjustment = calculateProjectedLineAdjustment(player);
+
         // Calculate the ranking score with matchup adjustment
 
-        return oddsWeight + scaleFactorWeight + starPlayerBonus + estimatedValueWeight + matchupAdjustment + hitRateAdjustment + estimatedValueAdjustment;
+        return oddsWeight + scaleFactorWeight + starPlayerBonus + estimatedValueWeight + matchupAdjustment + hitRateAdjustment + estimatedValueAdjustment + projectedLineAdjustment;
     }
 
     // Add method to calculate hit rate adjustment
@@ -132,6 +135,23 @@ public class RankingScoreCalculator {
                 default -> -5;
             };
         }
+    }
+
+    // Method to calculate projected line adjustment with matchup consideration
+    public static double calculateProjectedLineAdjustment(PlayerName player) {
+        double projectedLine = player.getProjectedLine(); // Ensure this method exists in PlayerName class
+        double matchupFactor = matchupAdjustmentFactor(player.getMatchup()); // Ensure getMatchup exists and returns a string like "good"
+        // Adjusted based on projected line and matchup quality
+        return (projectedLine / 100.0) * 2 * matchupFactor;
+    }
+
+    // Helper method to determine adjustment factor based on matchup quality
+    public static double matchupAdjustmentFactor(String matchup) {
+        return switch (matchup.toLowerCase()) {
+            case "good" -> 1.5;
+            case "average" -> 1.0;
+            default -> 0.5; // Assume any matchup not explicitly "good" or "average" is "poor"
+        };
     }
 
     public static String generatePlayerSummary(PlayerName player) {
